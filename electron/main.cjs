@@ -300,7 +300,11 @@ async function autotest(win) {
     fs.mkdirSync(AUTOTEST, { recursive: true });
     win.webContents.on('console-message', ev => { if (ev.level === 'error') rapport.console.push(String(ev.message)); });
     const js = code => win.webContents.executeJavaScript(code, true);
-    const capture = async nom => fs.writeFileSync(path.join(AUTOTEST, `${nom}.png`), (await win.webContents.capturePage()).toPNG());
+    // Les captures sont un bonus : sans carte graphique, certaines machines d'intégration les refusent.
+    const capture = async nom => {
+      try { fs.writeFileSync(path.join(AUTOTEST, `${nom}.png`), (await win.webContents.capturePage()).toPNG()); }
+      catch (e) { (rapport.capturesImpossibles ??= []).push(`${nom} : ${e.message}`); }
+    };
     await js(fs.readFileSync(path.join(__dirname, 'autotest.js'), 'utf8') + '\n;true');
     const csv = fs.readFileSync(path.join(__dirname, 'autotest-eleves.csv')).toString('base64');
     for (const [nom, code] of [

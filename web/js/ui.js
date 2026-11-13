@@ -793,6 +793,7 @@ function initDragDrop() {
         setTimeout(() => g.remove(), 0);
       }
       setTimeout(() => {
+        if (drag?.type !== 'eleves') return;
         document.body.classList.add('drag-eleves');
         for (const i of ids) $(`.carte[data-eleve="${CSS.escape(i)}"]`)?.classList.add('en-deplacement');
         marquerColonnes(ids);
@@ -801,13 +802,13 @@ function initDragDrop() {
       drag = { type: 'item', id: chip.dataset.item };
       ev.dataTransfer.effectAllowed = 'copy';
       ev.dataTransfer.setData('text/plain', item(chip.dataset.item)?.nom || '');
-      setTimeout(() => document.body.classList.add('drag-item'), 0);
+      setTimeout(() => { if (drag) document.body.classList.add('drag-item'); }, 0);
     } else if (entete) {
       const c = classe(entete.dataset.dragClasse);
       drag = { type: 'classe', id: c.id, niveau: c.niveau };
       ev.dataTransfer.effectAllowed = 'move';
       ev.dataTransfer.setData('text/plain', c.nom);
-      setTimeout(() => document.body.classList.add('drag-classe'), 0);
+      setTimeout(() => { if (drag) document.body.classList.add('drag-classe'); }, 0);
     }
   });
 
