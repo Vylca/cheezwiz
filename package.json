@@ -1,0 +1,81 @@
+{
+  "name": "formation-classes",
+  "productName": "Formation des classes",
+  "version": "1.0.0",
+  "description": "Composer les classes de la rentrée au collège",
+  "author": "Vylca",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Vylca/cheezwiz.git"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.mjs",
+    "dist": "electron-builder --linux --publish never",
+    "dist:mac": "electron-builder --mac --publish never",
+    "selftest": "FORMATION_CLASSES_SELFTEST=$PWD/selftest-out FORMATION_CLASSES_USERDATA=$PWD/selftest-out/userdata electron --no-sandbox ."
+  },
+  "devDependencies": {
+    "electron": "45.3.1",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "fr.vylca.formation-classes",
+    "productName": "Formation des classes",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "web/**",
+      "electron/**",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "tar.gz"
+      ],
+      "category": "Education",
+      "executableName": "formation-classes",
+      "artifactName": "Formation-des-classes-linux-x64.${ext}",
+      "icon": "build/icon.png",
+      "synopsis": "Composer les classes de la rentrée au collège"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.education",
+      "artifactName": "Formation-des-classes-mac-${arch}.${ext}",
+      "icon": "build/icon.png",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "minimumSystemVersion": "12.0"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "Formation-des-classes-windows-x64.${ext}",
+      "icon": "build/icon.png"
+    },
+    "extraResources": [
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
+      }
+    ]
+  },
+  "desktopName": "formation-classes.desktop"
+}

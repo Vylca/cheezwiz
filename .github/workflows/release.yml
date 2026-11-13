@@ -1,0 +1,141 @@
+name: Build and release
+
+# Chaque push sur main est testé et construit pour Linux et macOS, puis l'application
+# construite est lancée en mode autotest (import, classes, remplissage, glisser-déposer).
+# Si la version de package.json n'a pas encore de release, les paquets sont publiés.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      exists: ${{ steps.v.outputs.exists }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          tag="v$(node -p "require('./package.json').version")"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run dist
+      - name: Self test on Linux
+        run: |
+          sudo apt-get install -y xvfb >/dev/null
+          mkdir -p selftest
+          FORMATION_CLASSES_SELFTEST="$PWD/selftest/out" FORMATION_CLASSES_USERDATA="$PWD/selftest/userdata" \
+            timeout 180 xvfb-run -a -s "-screen 0 1500x950x24" release/linux-unpacked/formation-classes --no-sandbox > selftest/app.log 2>&1 || true
+          cat selftest/out/rapport.json
+          grep -q '"ok": true' selftest/out/rapport.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-selftest
+          path: selftest/out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: release/Formation-des-classes-linux-x64.tar.gz
+          if-no-files-found: error
+
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run dist:mac
+      - name: Check signature
+        run: |
+          ls release
+          for arch in arm64 x64; do
+            ditto -x -k "release/Formation-des-classes-mac-$arch.zip" "smoke-$arch"
+            codesign --verify --deep --strict --verbose=2 "smoke-$arch/Formation des classes.app"
+            lipo -archs "smoke-$arch/Formation des classes.app/Contents/MacOS/Formation des classes"
+          done
+          codesign -dv "smoke-arm64/Formation des classes.app" 2>&1 | head -5
+      - name: Self test on macOS
+        run: |
+          run_selftest() {
+            # $1 = dossier, $2… = commande. macOS n'a pas de commande timeout : on attend au plus 3 minutes.
+            local out="$1"; shift
+            mkdir -p "$out"
+            FORMATION_CLASSES_SELFTEST="$PWD/$out/out" FORMATION_CLASSES_USERDATA="$PWD/$out/userdata" "$@" > "$out/app.log" 2>&1 &
+            local pid=$!
+            for i in $(seq 1 180); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+            kill "$pid" 2>/dev/null || true
+            cat "$out/out/rapport.json"
+            grep -q '"ok": true' "$out/out/rapport.json"
+          }
+          run_selftest selftest-arm64 "smoke-arm64/Formation des classes.app/Contents/MacOS/Formation des classes"
+          if arch -x86_64 /usr/bin/true 2>/dev/null; then
+            run_selftest selftest-x64 arch -x86_64 "smoke-x64/Formation des classes.app/Contents/MacOS/Formation des classes"
+          else
+            echo "Rosetta absent : test Intel ignoré."
+          fi
+      - name: Show screenshots in the log
+        run: |
+          for f in 02-remplissage 03-glisser; do
+            sips -s format jpeg -s formatOptions 60 -Z 1000 "selftest-arm64/out/$f.png" --out "selftest-arm64/$f.jpg" >/dev/null
+            echo "BEGIN-SHOT $f"; base64 -i "selftest-arm64/$f.jpg" | tr -d '\n'; echo; echo "END-SHOT $f"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mac-selftest
+          path: selftest-*/out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: release/Formation-des-classes-mac-*.zip
+          if-no-files-found: error
+
+  release:
+    needs: [version, linux, mac]
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: mac
+          path: dist
+      - run: ls -la dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Formation des classes ${{ needs.version.outputs.tag }}
+          files: dist/*
+          make_latest: true
+          generate_release_notes: true

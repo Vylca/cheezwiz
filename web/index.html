@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Formation des classes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="icone.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="barre">
+    <div class="marque"><img src="icone.svg" alt="" width="26" height="26"><span>Formation des classes</span></div>
+    <input id="titre-projet" class="titre-projet" title="Nom du projet" spellcheck="false">
+    <span id="etat-sauvegarde" class="etat-sauvegarde"></span>
+    <nav id="onglets" class="onglets" aria-label="Niveaux"></nav>
+    <div class="recherche">
+      <input id="recherche" type="search" placeholder="Rechercher un élève…" autocomplete="off">
+    </div>
+    <div class="actions" id="actions"></div>
+  </header>
+  <div id="palette"></div>
+  <main id="tableau"></main>
+  <aside id="inspecteur" hidden></aside>
+  <div id="barre-selection" hidden></div>
+  <div id="bandeau" hidden></div>
+  <div id="toasts" aria-live="polite"></div>
+  <div id="voile-fichiers" hidden><div>Déposez vos fichiers CSV pour les importer</div></div>
+  <input type="file" id="fichier-csv" accept=".csv,.txt,text/csv" multiple hidden>
+  <input type="file" id="fichier-projet" accept=".json,application/json" hidden>
+  <script type="module" src="js/ui.js"></script>
+</body>
+</html>
